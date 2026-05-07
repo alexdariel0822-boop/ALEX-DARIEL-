@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Foro Estudiantil</title>
+
+<style>
+body {
+    font-family: Arial;
+    margin: 0;
+    background: #dfe6e9;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+
+.app {
+    width: 360px;
+    height: 620px;
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0 0 20px rgba(0,0,0,0.2);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+header {
+    background: #2c3e50;
+    color: white;
+    text-align: center;
+    padding: 10px;
+}
+
+.container {
+    flex: 1;
+    padding: 15px;
+    overflow-y: auto;
+}
+
+input, textarea, button {
+    width: 100%;
+    margin: 5px 0;
+    padding: 8px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+}
+
+button {
+    background: #0984e3;
+    color: white;
+    border: none;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #74b9ff;
+}
+
+.hidden {
+    display: none;
+}
+
+/* CHAT */
+#posts {
+    display: flex;
+    flex-direction: column;
+}
+
+.post {
+    padding: 8px;
+    margin: 5px 0;
+    border-radius: 10px;
+    max-width: 75%;
+    background: #74b9ff;
+    color: white;
+    font-size: 14px;
+}
+
+.post.me {
+    align-self: flex-end;
+    background: #00b894;
+}
+
+.time {
+    font-size: 10px;
+    opacity: 0.8;
+    text-align: right;
+}
+
+/* QR */
+.qr {
+    text-align: center;
+    margin-top: 10px;
+}
+.qr img {
+    width: 140px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="app">
+
+<header>
+    <h3>Grupo Estudiantil</h3>
+</header>
+
+<div class="container">
+
+<!-- INICIO -->
+<div id="home">
+    <h3>Bienvenido</h3>
+    <button onclick="showRegister()">Registrarse</button>
+    <button onclick="showLogin()">Iniciar sesión</button>
+    <button onclick="showUsers()">Ver usuarios registrados</button>
+
+    <div class="qr">
+        <p>Escanea para entrar</p>
+        <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://tugrupo-estudiantil.com">
+    </div>
+</div>
+
+<!-- REGISTRO -->
+<div id="register" class="hidden">
+    <h3>Registro</h3>
+    <input type="text" id="regUser" placeholder="Usuario">
+    <input type="password" id="regPass" placeholder="Contraseña">
+    <button onclick="registerUser()">Crear cuenta</button>
+    <button onclick="backHome()">Volver</button>
+</div>
+
+<!-- LOGIN -->
+<div id="login" class="hidden">
+    <h3>Login</h3>
+    <input type="text" id="logUser" placeholder="Usuario">
+    <input type="password" id="logPass" placeholder="Contraseña">
+    <button onclick="loginUser()">Entrar</button>
+    <button onclick="backHome()">Volver</button>
+</div>
+
+<!-- FORO -->
+<div id="forum" class="hidden">
+    <h3>Chat</h3>
+
+    <div id="posts"></div>
+
+    <textarea id="content" placeholder="Escribe mensaje..."></textarea>
+    <input type="file" id="fileInput">
+    <button onclick="postMessage()">Enviar</button>
+
+    <button onclick="logout()">Cerrar sesión</button>
+</div>
+
+</div>
+</div>
+
+<script>
+let currentUser = "";
+
+/* NAV */
+function hideAll() {
+    document.querySelectorAll(".container > div").forEach(d => d.classList.add("hidden"));
+}
+
+function showRegister() {
+    hideAll();
+    document.getElementById("register").classList.remove("hidden");
+}
+
+function showLogin() {
+    hideAll();
+    document.getElementById("login").classList.remove("hidden");
+}
+
+function backHome() {
+    hideAll();
+    document.getElementById("home").classList.remove("hidden");
+}
+
+function showForum() {
+    hideAll();
+    document.getElementById("forum").classList.remove("hidden");
+    loadPosts();
+}
+
+/* USUARIOS */
+function getUsers() {
+    return JSON.parse(localStorage.getItem("users") || "[]");
+}
+
+function saveUsers(users) {
+    localStorage.setItem("users", JSON.stringify(users));
+}
+
+function showUsers() {
+    let users = getUsers();
+    alert("Usuarios registrados: " + users.length + "\n\n" + users.join(", "));
+}
+
+/* REGISTRO */
+function registerUser() {
+    let u = document.getElementById("regUser").value.trim();
+    let p = document.getElementById("regPass").value.trim();
+
+    if (!u || !p) return alert("Completa todo");
+
+    let users = getUsers();
+
+    if (users.includes(u)) {
+        return alert("Ese usuario ya existe");
+    }
+
+    users.push(u);
+    saveUsers(users);
+    localStorage.setItem("pass_" + u, p);
+
+    alert("Registrado correctamente");
+    backHome();
+}
+
+/* LOGIN */
+function loginUser() {
+    let u = document.getElementById("logUser").value.trim();
+    let p = document.getElementById("logPass").value.trim();
+
+    if (localStorage.getItem("pass_" + u) === p) {
+        currentUser = u;
+        showForum();
+    } else {
+        alert("Datos incorrectos");
+    }
+}
+
+/* LOGOUT */
+function logout() {
+    currentUser = "";
+    backHome();
+}
+
+/* TIEMPO */
+function getTime() {
+    let d = new Date();
+    return d.getHours() + ":" + d.getMinutes().toString().padStart(2,"0");
+}
+
+/* POSTS */
+function savePost(data) {
+    let posts = JSON.parse(localStorage.getItem("posts") || "[]");
+    posts.push(data);
+    localStorage.setItem("posts", JSON.stringify(posts));
+}
+
+function loadPosts() {
+    let container = document.getElementById("posts");
+    container.innerHTML = "";
+
+    let data = JSON.parse(localStorage.getItem("posts") || "[]");
+
+    data.forEach(p => {
+        container.appendChild(createPost(p));
+    });
+}
+
+function createPost(p) {
+    let div = document.createElement("div");
+    div.className = "post";
+
+    if (p.user === currentUser) div.classList.add("me");
+
+    let html = "<b>" + p.user + "</b><br>" + p.text;
+
+    if (p.file) {
+        if (p.type.startsWith("image")) {
+            html += `<br><img src="${p.file}" width="120">`;
+        } else if (p.type.startsWith("video")) {
+            html += `<br><video src="${p.file}" controls width="150"></video>`;
+        } else {
+            html += `<br><a href="${p.file}" download style="color:white;">Descargar archivo</a>`;
+        }
+    }
+
+    html += `<div class="time">${p.time}</div>`;
+
+    div.innerHTML = html;
+    return div;
+}
+
+/* PUBLICAR */
+function postMessage() {
+    let text = document.getElementById("content").value.trim();
+    let file = document.getElementById("fileInput").files[0];
+
+    if (!text && !file) return;
+
+    let data = {
+        user: currentUser,
+        text: text,
+        time: getTime(),
+        file: null,
+        type: null
+    };
+
+    if (file) {
+        data.file = URL.createObjectURL(file);
+        data.type = file.type;
+    }
+
+    savePost(data);
+
+    document.getElementById("posts").appendChild(createPost(data));
+
+    document.getElementById("content").value = "";
+    document.getElementById("fileInput").value = "";
+}
+</script>
+
+</body>
+</html>
